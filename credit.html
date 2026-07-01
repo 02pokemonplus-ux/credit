@@ -28,7 +28,8 @@
   header{margin-bottom:22px}
   .title{font-size:15px;letter-spacing:3px;color:var(--muted);font-weight:500}
   .monthbar{display:flex;align-items:center;gap:14px;margin-top:6px}
-  .monthbar h1{font-size:30px;font-weight:700;letter-spacing:1px}
+  .monthbar h1{font-size:26px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+  .monthbar .cyc-hint{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:2px}
   .monthbar button{
     border:1px solid var(--line);background:var(--card);color:var(--ink);
     width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;
@@ -171,7 +172,7 @@
     </header>
 
     <div class="hero">
-      <div class="label">這個月要付給媽媽</div>
+      <div class="label">這期要付給媽媽<span id="cycleNote" style="margin-left:6px;font-size:12px;opacity:.75"></span></div>
       <div class="amount"><small>NT$</small><span id="payAmount">0</span></div>
       <div class="sub">
         <div>總消費 <b id="totalAmount">NT$0</b></div>
@@ -269,32 +270,77 @@ function fetchData(){
   document.body.appendChild(s);
 }
 
-// ---------- 月份 ----------
-function ym(dateStr){
-  // dateStr 形如 2026/07/01;取 YYYY/MM
-  const m = String(dateStr).match(/(\d{4})\/(\d{2})/);
-  return m ? m[1]+"/"+m[2] : "未分類";
+// ---------- 結算週期(每月5號~隔月4號) ----------
+const CYCLE_START_DAY = 5; // 每期從幾號開始;結帳日為前一天(4號)
+
+// 把日期字串解析成 {y,m,d}
+function parseDate(dateStr){
+  const m = String(dateStr).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if(!m) return null;
+  return {y:+m[1], mo:+m[2], d:+m[3]};
 }
+
+// 算出某筆消費屬於哪一個週期,回傳週期代碼(用「週期起始日」當唯一識別)如 "2026/06/05"
+function cycleKey(dateStr){
+  const p = parseDate(dateStr);
+  if(!p) return null;
+  // 5號(含)以後 → 屬於本月起始的週期;4號(含)以前 → 屬於上個月起始的週期
+  let y = p.y, mo = p.mo;
+  if(p.d < CYCLE_START_DAY){
+    mo -= 1;
+    if(mo < 1){ mo = 12; y -= 1; }
+  }
+  return y + "/" + String(mo).padStart(2,"0") + "/" + String(CYCLE_START_DAY).padStart(2,"0");
+}
+
+// 把週期代碼轉成顯示區間文字,如 "6/5 – 7/4"
+function cycleLabel(key){
+  const m = key.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+  if(!m) return key;
+  let y = +m[1], mo = +m[2], d = +m[3];
+  // 結束日 = 隔月的 (起始日-1)
+  let ey = y, emo = mo + 1;
+  if(emo > 12){ emo = 1; ey += 1; }
+  const endDay = CYCLE_START_DAY - 1;
+  const startTxt = mo + "/" + d;
+  const endTxt = emo + "/" + endDay;
+  // 若跨年,標註年份以免混淆
+  if(ey !== y){
+    return y + " " + startTxt + " – " + ey + " " + endTxt;
+  }
+  return startTxt + " – " + endTxt;
+}
+
+function allCycles(){
+  return [...new Set(DATA.map(d=>cycleKey(d.date)).filter(k=>k))].sort();
+}
+
 function initMonths(){
-  const months = [...new Set(DATA.map(d=>ym(d.date)).filter(m=>m!=="未分類"))].sort();
-  if(months.length){ curMonth = months[months.length-1]; }
-  else { curMonth = ym(new Date().getFullYear()+"/"+String(new Date().getMonth()+1).padStart(2,"0")+"/01"); }
+  const cycles = allCycles();
+  if(cycles.length){ curMonth = cycles[cycles.length-1]; }
+  else {
+    // 沒資料 → 用今天所屬的週期
+    const now = new Date();
+    curMonth = cycleKey(now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate())
+             || (now.getFullYear()+"/"+String(now.getMonth()+1).padStart(2,"0")+"/05");
+  }
 }
 function changeMonth(dir){
-  const months = [...new Set(DATA.map(d=>ym(d.date)).filter(m=>m!=="未分類"))].sort();
-  let i = months.indexOf(curMonth);
-  if(i===-1){ if(months.length) curMonth=months[months.length-1]; render(); return; }
+  const cycles = allCycles();
+  let i = cycles.indexOf(curMonth);
+  if(i===-1){ if(cycles.length) curMonth=cycles[cycles.length-1]; render(); return; }
   i += dir;
-  if(i<0||i>=months.length) return;
-  curMonth = months[i];
+  if(i<0||i>=cycles.length) return;
+  curMonth = cycles[i];
   render();
 }
 
 // ---------- 主渲染 ----------
-function monthData(){ return DATA.filter(d=>ym(d.date)===curMonth); }
+function monthData(){ return DATA.filter(d=>cycleKey(d.date)===curMonth); }
 
 function render(){
-  document.getElementById("monthLabel").textContent = curMonth.replace("/"," 年 ")+" 月";
+  document.getElementById("monthLabel").textContent = cycleLabel(curMonth);
+  document.getElementById("cycleNote").textContent = "(每月5號結算)";
   const rows = monthData();
 
   const total = rows.reduce((s,d)=>s+d.amount,0);
