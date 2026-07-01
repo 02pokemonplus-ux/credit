@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>信用卡月結算</title>
+<style>
+  :root{
+    --bg:#f6f3ec;
+    --card:#fffdf8;
+    --ink:#2f2a24;
+    --muted:#8a8175;
+    --line:#e7e0d4;
+    --accent:#c0603f;      /* 磚紅 */
+    --accent-soft:#e9d3c6;
+    --green:#5a8a6b;
+    --c1:#c0603f; --c2:#e0a458; --c3:#5a8a6b; --c4:#6b8ab0; --c5:#9a7bb0; --c6:#b0a08a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg); color:var(--ink);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+    padding:20px 16px 60px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+
+  header{margin-bottom:22px}
+  .title{font-size:15px;letter-spacing:3px;color:var(--muted);font-weight:500}
+  .monthbar{display:flex;align-items:center;gap:14px;margin-top:6px}
+  .monthbar h1{font-size:30px;font-weight:700;letter-spacing:1px}
+  .monthbar button{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:.15s;
+  }
+  .monthbar button:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* 主數字卡 */
+  .hero{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:26px 24px;margin-bottom:16px;position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;top:0;left:0;width:5px;height:100%;background:var(--accent);
+  }
+  .hero .label{font-size:14px;color:var(--muted);letter-spacing:1px}
+  .hero .amount{font-size:44px;font-weight:800;letter-spacing:.5px;margin-top:2px}
+  .hero .amount small{font-size:20px;font-weight:600;margin-right:4px;color:var(--muted)}
+  .hero .sub{
+    display:flex;gap:22px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);
+    font-size:14px;color:var(--muted);flex-wrap:wrap;
+  }
+  .hero .sub b{color:var(--ink);font-weight:700}
+
+  /* 圓餅圖卡 */
+  .chartcard{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:22px 24px;margin-bottom:16px;
+  }
+  .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .chart-head .h{font-size:16px;font-weight:700}
+  .toggle{display:flex;background:var(--bg);border-radius:10px;padding:3px;border:1px solid var(--line)}
+  .toggle button{
+    border:none;background:transparent;color:var(--muted);font-size:12.5px;
+    padding:6px 12px;border-radius:8px;cursor:pointer;transition:.15s;font-family:inherit;white-space:nowrap;
+  }
+  .toggle button.on{background:var(--accent);color:#fff}
+  .chart-body{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .donut-wrap{position:relative;width:170px;height:170px;flex-shrink:0;margin:0 auto}
+  .donut-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;
+  }
+  .donut-center .t{font-size:12px;color:var(--muted)}
+  .donut-center .v{font-size:20px;font-weight:800}
+  .legend{flex:1;min-width:180px;display:flex;flex-direction:column;gap:9px}
+  .legend .item{display:flex;align-items:center;gap:9px;font-size:14px}
+  .legend .dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+  .legend .nm{flex:1}
+  .legend .amt{font-weight:700}
+  .legend .pct{color:var(--muted);font-size:12.5px;width:42px;text-align:right}
+
+  /* 明細 */
+  .listcard{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  .list-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 22px;border-bottom:1px solid var(--line);
+  }
+  .list-head .h{font-size:16px;font-weight:700}
+  .list-head .hint{font-size:12.5px;color:var(--muted)}
+  .row{
+    display:flex;align-items:center;gap:14px;padding:14px 22px;
+    border-bottom:1px solid var(--line);transition:.15s;
+  }
+  .row:last-child{border-bottom:none}
+  .row.fam{background:#f3f6f2}
+  .row .cat{
+    font-size:11px;padding:3px 9px;border-radius:20px;flex-shrink:0;
+    background:var(--accent-soft);color:var(--accent);font-weight:600;min-width:44px;text-align:center;
+  }
+  .row .info{flex:1;min-width:0}
+  .row .store{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .date{font-size:12px;color:var(--muted)}
+  .row .money{font-weight:700;font-size:15px;white-space:nowrap}
+  .row.fam .money{color:var(--muted);text-decoration:line-through}
+  .check{
+    display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex-shrink:0;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .check input{width:22px;height:22px;accent-color:var(--green);cursor:pointer}
+  .check span{font-size:10px;color:var(--muted)}
+
+  .state{padding:50px 20px;text-align:center;color:var(--muted);font-size:14px}
+  .spin{
+    width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);
+    border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 14px;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* 設定 */
+  .setup{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:24px;margin-bottom:16px;
+  }
+  .setup h2{font-size:17px;margin-bottom:6px}
+  .setup p{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+  .setup label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+  .setup input{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;
+    font-size:14px;font-family:inherit;margin-bottom:13px;background:var(--bg);color:var(--ink);
+  }
+  .setup input:focus{outline:none;border-color:var(--accent)}
+  .setup .btn{
+    width:100%;padding:12px;background:var(--accent);color:#fff;border:none;
+    border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .gear{float:right;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 設定畫面 -->
+  <div id="setup" class="setup hidden">
+    <h2>連線設定</h2>
+    <p>第一次使用請填入你的 Apps Script 網址與密碼。設定會記在這台裝置的瀏覽器,下次自動帶入。</p>
+    <label>Apps Script 網址</label>
+    <input id="in-url" placeholder="https://script.google.com/macros/s/.../exec">
+    <label>密碼</label>
+    <input id="in-key" placeholder="mama2026">
+    <button class="btn" onclick="saveSetup()">儲存並載入</button>
+  </div>
+
+  <!-- 主畫面 -->
+  <div id="app" class="hidden">
+    <header>
+      <div class="title">刷卡月結算 <span class="gear" onclick="openSetup()">設定</span></div>
+      <div class="monthbar">
+        <button onclick="changeMonth(-1)">‹</button>
+        <h1 id="monthLabel">—</h1>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+    </header>
+
+    <div class="hero">
+      <div class="label">這個月要付給媽媽</div>
+      <div class="amount"><small>NT$</small><span id="payAmount">0</span></div>
+      <div class="sub">
+        <div>總消費 <b id="totalAmount">NT$0</b></div>
+        <div>家用扣除 <b id="familyAmount">NT$0</b></div>
+        <div>共 <b id="countAll">0</b> 筆</div>
+      </div>
+    </div>
+
+    <div class="chartcard">
+      <div class="chart-head">
+        <div class="h">消費分析</div>
+        <div class="toggle">
+          <button id="tg-pay" class="on" onclick="setMode('pay')">要付的部分</button>
+          <button id="tg-all" onclick="setMode('all')">全部消費</button>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="donut-wrap">
+          <svg viewBox="0 0 42 42" width="170" height="170" id="donut"></svg>
+          <div class="donut-center">
+            <div class="t" id="donutTitle">要付</div>
+            <div class="v" id="donutTotal">NT$0</div>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <div class="listcard">
+      <div class="list-head">
+        <div class="h">消費明細</div>
+        <div class="hint">勾選 = 家用(媽媽的),不列入應付</div>
+      </div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <!-- 載入中 / 錯誤 -->
+  <div id="loading" class="state"><div class="spin"></div>載入中…</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const CAT_COLORS = {"餐飲":"var(--c1)","購物":"var(--c2)","交通":"var(--c3)","日用":"var(--c4)","其他":"var(--c6)"};
+const CAT_ORDER = ["餐飲","購物","交通","日用","其他"];
+let CFG = {url:"", key:""};
+let DATA = [];          // 全部資料
+let curMonth = "";      // YYYY/MM
+let mode = "pay";       // pay | all
+
+// ---------- 設定存取(用記憶體變數,不用 localStorage) ----------
+// 說明:此工具將設定存於瀏覽器 localStorage 以便下次自動帶入。
+function loadCfg(){
+  try{
+    const u = localStorage.getItem("mama_url");
+    const k = localStorage.getItem("mama_key");
+    if(u && k){ CFG.url=u; CFG.key=k; return true; }
+  }catch(e){}
+  return false;
+}
+function saveSetup(){
+  const u = document.getElementById("in-url").value.trim();
+  const k = document.getElementById("in-key").value.trim();
+  if(!u || !k){ toast("請填入網址和密碼"); return; }
+  CFG.url=u; CFG.key=k;
+  try{ localStorage.setItem("mama_url",u); localStorage.setItem("mama_key",k); }catch(e){}
+  document.getElementById("setup").classList.add("hidden");
+  fetchData();
+}
+function openSetup(){
+  document.getElementById("in-url").value = CFG.url;
+  document.getElementById("in-key").value = CFG.key;
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("setup").classList.remove("hidden");
+}
+
+// ---------- 讀取資料(JSONP 繞過 CORS) ----------
+function fetchData(){
+  show("loading");
+  const cb = "cb_" + Date.now();
+  window[cb] = function(res){
+    delete window[cb];
+    document.body.removeChild(s);
+    if(res.status !== "success"){ toast("讀取失敗:" + (res.message||"")); openSetup(); return; }
+    DATA = res.data || [];
+    initMonths();
+    render();
+    show("app");
+  };
+  const s = document.createElement("script");
+  s.onerror = function(){ toast("連線失敗,請檢查網址"); show("app"); openSetup(); };
+  s.src = CFG.url + "?action=list&key=" + encodeURIComponent(CFG.key) + "&callback=" + cb + "&_=" + Date.now();
+  document.body.appendChild(s);
+}
+
+// ---------- 月份 ----------
+function ym(dateStr){
+  // dateStr 形如 2026/07/01;取 YYYY/MM
+  const m = String(dateStr).match(/(\d{4})\/(\d{2})/);
+  return m ? m[1]+"/"+m[2] : "未分類";
+}
+function initMonths(){
+  const months = [...new Set(DATA.map(d=>ym(d.date)).filter(m=>m!=="未分類"))].sort();
+  if(months.length){ curMonth = months[months.length-1]; }
+  else { curMonth = ym(new Date().getFullYear()+"/"+String(new Date().getMonth()+1).padStart(2,"0")+"/01"); }
+}
+function changeMonth(dir){
+  const months = [...new Set(DATA.map(d=>ym(d.date)).filter(m=>m!=="未分類"))].sort();
+  let i = months.indexOf(curMonth);
+  if(i===-1){ if(months.length) curMonth=months[months.length-1]; render(); return; }
+  i += dir;
+  if(i<0||i>=months.length) return;
+  curMonth = months[i];
+  render();
+}
+
+// ---------- 主渲染 ----------
+function monthData(){ return DATA.filter(d=>ym(d.date)===curMonth); }
+
+function render(){
+  document.getElementById("monthLabel").textContent = curMonth.replace("/"," 年 ")+" 月";
+  const rows = monthData();
+
+  const total = rows.reduce((s,d)=>s+d.amount,0);
+  const family = rows.filter(d=>d.isFamily).reduce((s,d)=>s+d.amount,0);
+  const pay = total - family;
+
+  document.getElementById("payAmount").textContent = fmt(pay);
+  document.getElementById("totalAmount").textContent = "NT$"+fmt(total);
+  document.getElementById("familyAmount").textContent = "NT$"+fmt(family);
+  document.getElementById("countAll").textContent = rows.length;
+
+  renderChart(rows);
+  renderList(rows);
+}
+
+function catTotals(rows){
+  const map = {};
+  rows.forEach(d=>{ map[d.category]=(map[d.category]||0)+d.amount; });
+  return map;
+}
+
+function renderChart(rows){
+  const src = (mode==="pay") ? rows.filter(d=>!d.isFamily) : rows;
+  const totals = catTotals(src);
+  const sum = Object.values(totals).reduce((a,b)=>a+b,0);
+  document.getElementById("donutTitle").textContent = (mode==="pay")?"要付":"全部";
+  document.getElementById("donutTotal").textContent = "NT$"+fmt(sum);
+
+  const cats = CAT_ORDER.filter(c=>totals[c]>0);
+  const donut = document.getElementById("donut");
+  const legend = document.getElementById("legend");
+  donut.innerHTML=""; legend.innerHTML="";
+
+  if(sum===0){
+    donut.innerHTML = '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--line)" stroke-width="5"/>';
+    legend.innerHTML = '<div style="color:var(--muted);font-size:13px">這個月沒有資料</div>';
+    return;
+  }
+
+  let offset = 25; // 從12點鐘方向開始
+  cats.forEach(c=>{
+    const val = totals[c];
+    const pct = val/sum*100;
+    const circ = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    circ.setAttribute("cx","21"); circ.setAttribute("cy","21"); circ.setAttribute("r","15.9");
+    circ.setAttribute("fill","none");
+    circ.setAttribute("stroke",CAT_COLORS[c]||"var(--c6)");
+    circ.setAttribute("stroke-width","5");
+    circ.setAttribute("stroke-dasharray", pct.toFixed(2)+" "+(100-pct).toFixed(2));
+    circ.setAttribute("stroke-dashoffset", offset.toFixed(2));
+    circ.style.transition="stroke-dasharray .4s";
+    donut.appendChild(circ);
+    offset -= pct;
+
+    const item = document.createElement("div");
+    item.className="item";
+    item.innerHTML = '<span class="dot" style="background:'+(CAT_COLORS[c]||"var(--c6)")+'"></span>'
+      + '<span class="nm">'+c+'</span>'
+      + '<span class="amt">NT$'+fmt(val)+'</span>'
+      + '<span class="pct">'+pct.toFixed(0)+'%</span>';
+    legend.appendChild(item);
+  });
+}
+
+function renderList(rows){
+  const list = document.getElementById("list");
+  list.innerHTML="";
+  if(!rows.length){
+    list.innerHTML = '<div class="state" style="padding:36px">這個月還沒有消費紀錄</div>';
+    return;
+  }
+  // 日期新到舊
+  const sorted = [...rows].sort((a,b)=> String(b.date).localeCompare(String(a.date)));
+  sorted.forEach(d=>{
+    const row = document.createElement("div");
+    row.className = "row" + (d.isFamily?" fam":"");
+    row.innerHTML =
+      '<span class="cat">'+d.category+'</span>'
+      + '<div class="info"><div class="store">'+esc(d.store)+'</div><div class="date">'+esc(d.date)+'</div></div>'
+      + '<div class="money">NT$'+fmt(d.amount)+'</div>'
+      + '<label class="check"><input type="checkbox" '+(d.isFamily?"checked":"")+'><span>家用</span></label>';
+    const cb = row.querySelector("input");
+    cb.addEventListener("change", ()=> toggleFamily(d, cb.checked, cb));
+    list.appendChild(row);
+  });
+}
+
+// ---------- 勾選寫回 ----------
+function toggleFamily(d, checked, cbEl){
+  d.isFamily = checked;   // 先更新畫面
+  render();
+  const form = new URLSearchParams();
+  form.append("action","update");
+  form.append("key",CFG.key);
+  form.append("row",d.row);
+  form.append("isFamily",checked?"true":"false");
+  fetch(CFG.url, {method:"POST", body:form})
+    .then(()=> toast(checked?"已標記家用":"已取消家用"))
+    .catch(()=>{ toast("儲存失敗,已還原"); d.isFamily=!checked; render(); });
+}
+
+// ---------- 小工具 ----------
+function setMode(m){
+  mode=m;
+  document.getElementById("tg-pay").classList.toggle("on",m==="pay");
+  document.getElementById("tg-all").classList.toggle("on",m==="all");
+  renderChart(monthData());
+}
+function fmt(n){ return Number(n).toLocaleString("en-US"); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function show(id){ ["setup","app","loading"].forEach(x=>document.getElementById(x).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+// ---------- 啟動 ----------
+if(loadCfg()){ fetchData(); }
+else{ show("setup"); }
+</script>
+</body>
+</html>
