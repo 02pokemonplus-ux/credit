@@ -98,7 +98,8 @@
   .row.fam{background:#f3f6f2}
   .row .cat{
     font-size:11px;padding:3px 9px;border-radius:20px;flex-shrink:0;
-    background:var(--accent-soft);color:var(--accent);font-weight:600;min-width:44px;text-align:center;
+    font-weight:700;min-width:44px;text-align:center;
+    border:1px solid currentColor;
   }
   .row .info{flex:1;min-width:0}
   .row .store{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -154,9 +155,9 @@
     <h2>連線設定</h2>
     <p>第一次使用請填入你的 Apps Script 網址與密碼。設定會記在這台裝置的瀏覽器,下次自動帶入。</p>
     <label>Apps Script 網址</label>
-    <input id="in-url" placeholder="https://script.google.com/macros/s/.../exec">
+    <input id="in-url">
     <label>密碼</label>
-    <input id="in-key" placeholder="mama2026">
+    <input id="in-key">
     <button class="btn" onclick="saveSetup()">儲存並載入</button>
   </div>
 
@@ -219,6 +220,8 @@
 
 <script>
 const CAT_COLORS = {"餐飲":"var(--c1)","購物":"var(--c2)","交通":"var(--c3)","日用":"var(--c4)","其他":"var(--c6)"};
+// 標籤用實際色碼(與圓餅圖 --c1~--c6 對應一致)
+const CAT_HEX = {"餐飲":"#c0603f","購物":"#e0a458","交通":"#5a8a6b","日用":"#6b8ab0","其他":"#b0a08a"};
 const CAT_ORDER = ["餐飲","購物","交通","日用","其他"];
 let CFG = {url:"", key:""};
 let DATA = [];          // 全部資料
@@ -417,8 +420,9 @@ function renderList(rows){
   sorted.forEach(d=>{
     const row = document.createElement("div");
     row.className = "row" + (d.isFamily?" fam":"");
+    const hex = CAT_HEX[d.category] || CAT_HEX["其他"];
     row.innerHTML =
-      '<span class="cat">'+d.category+'</span>'
+      '<span class="cat" style="color:'+hex+';background:'+hex+'1a">'+d.category+'</span>'
       + '<div class="info"><div class="store">'+esc(d.store)+'</div><div class="date">'+esc(d.date)+'</div></div>'
       + '<div class="money">NT$'+fmt(d.amount)+'</div>'
       + '<label class="check"><input type="checkbox" '+(d.isFamily?"checked":"")+'><span>家用</span></label>';
